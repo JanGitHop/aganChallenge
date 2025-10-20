@@ -13,6 +13,8 @@
 .idea/httpRequests/
 .idea/sonarlint/
 .idea/codeStyles/codeStyleConfig.xml
+.idea/data_source_mapping.xml
+.idea/dataSources.xml
 
 ###> symfony/framework-bundle ###
 /.env.local
