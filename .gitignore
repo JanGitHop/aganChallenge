@@ -12,6 +12,7 @@
 .idea/dictionaries
 .idea/httpRequests/
 .idea/sonarlint/
+.idea/codeStyles/codeStyleConfig.xml
 
 ###> symfony/framework-bundle ###
 /.env.local
