@@ -9,7 +9,9 @@ services:
     restart: unless-stopped
     volumes:
       - php_socket:/var/run/php
+      - .:/app
     healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 3
