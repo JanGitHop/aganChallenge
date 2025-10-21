@@ -1,52 +1,49 @@
-FROM php:8.3-fpm-alpine AS app_php
+FROM dunglas/frankenphp:1-php8.3 AS frankenphp_base
 
-# Persistent dependencies
-RUN apk add --no-cache \
-    acl \
-    fcgi \
-    file \
-    gettext \
-    git \
-    postgresql-dev \
-    icu-dev \
-    libzip-dev \
-    zlib-dev
-
-# PHP extensions
-RUN docker-php-ext-install -j$(nproc) \
-    intl \
+# Install PHP extensions
+RUN install-php-extensions \
     pdo_pgsql \
+    intl \
     zip \
     opcache
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Configure PHP for development
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
-
-COPY docker/php/conf.d/app.ini $PHP_INI_DIR/conf.d/
-COPY docker/php/conf.d/app.prod.ini $PHP_INI_DIR/conf.d/
-
 WORKDIR /app
 
 # Prevent Composer from running as superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
+
+# Development stage
+FROM frankenphp_base AS frankenphp_dev
+
+# Enable Xdebug in development
+RUN install-php-extensions xdebug
+
+# Development PHP configuration
+COPY docker/frankenphp/conf.d/app.dev.ini $PHP_INI_DIR/conf.d/
+COPY docker/frankenphp/Caddyfile /etc/caddy/Caddyfile
+
+# Disable worker mode by default
+ENV FRANKENPHP_CONFIG=""
+
+# Application files will be mounted as volume
+VOLUME /app/var
+
+# Production stage
+FROM frankenphp_base AS frankenphp_prod
+
+# Production PHP configuration
+COPY docker/frankenphp/conf.d/app.prod.ini $PHP_INI_DIR/conf.d/
+COPY docker/frankenphp/Caddyfile /etc/caddy/Caddyfile
 
 # Copy application files
 COPY . /app
 
 RUN set -eux; \
     mkdir -p var/cache var/log; \
-    composer install --prefer-dist --no-autoloader --no-scripts --no-progress; \
+    composer install --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
     composer clear-cache; \
-    composer dump-autoload --classmap-authoritative; \
+    composer dump-autoload --classmap-authoritative --no-dev; \
     chmod +x bin/console; sync;
-
-VOLUME /app/var
-
-COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint
-
-ENTRYPOINT ["docker-entrypoint"]
-CMD ["php-fpm"]

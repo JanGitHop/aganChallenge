@@ -1,0 +1,32 @@
+localhost {
+    tls internal
+
+    log
+
+    root * /app/public
+
+    # Enable compression
+    encode zstd gzip
+
+    # Serve static files, try_files syntax for Symfony
+    @php_files {
+        path *.php
+        file
+    }
+
+    handle @php_files {
+        php
+    }
+
+    # Route everything else to index.php (Symfony front controller)
+    @not_php {
+        not path *.php
+    }
+
+    handle @not_php {
+        try_files {path} /index.php
+        php
+    }
+
+    file_server
+}
