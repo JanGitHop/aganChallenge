@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Repository\CartItemRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: CartItemRepository::class)]
@@ -14,6 +15,7 @@ class CartItem
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
+    #[Groups(['cart:read'])]
     private Uuid $id;
 
     /**
@@ -24,27 +26,35 @@ class CartItem
     private Cart $cart;
 
     #[ORM\Column]
+    #[Groups(['cart:read'])]
     private int $productId;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['cart:read'])]
     private string $productName;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['cart:read'])]
     private ?string $category = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['cart:read'])]
     private ?string $sku = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    #[Groups(['cart:read'])]
     private float $price;
 
     #[ORM\Column]
+    #[Groups(['cart:read'])]
     private int $quantity;
 
     #[ORM\Column]
+    #[Groups(['cart:read'])]
     private \DateTimeImmutable $addedAt;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['cart:read'])]
     private ?\DateTimeImmutable $updatedAt = null;
 
     public function __construct(
@@ -113,6 +123,7 @@ class CartItem
     public function setQuantity(int $quantity): static
     {
         $this->quantity = $quantity;
+        $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
     }
@@ -134,8 +145,35 @@ class CartItem
         return $this;
     }
 
+    #[Groups(['cart:read'])]
     public function getSubtotal(): float
     {
         return $this->price * $this->quantity;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'id' => (string) $this->id,
+            'productId' => $this->productId,
+            'productName' => $this->productName,
+            'category' => $this->category,
+            'sku' => $this->sku,
+            'price' => $this->price,
+            'quantity' => $this->quantity,
+            'subtotal' => $this->getSubtotal(),
+            'addedAt' => $this->addedAt->format(\DateTimeInterface::ATOM),
+            'updatedAt' => $this->updatedAt?->format(\DateTimeInterface::ATOM),
+        ];
+    }
+
+    public static function requiredFields(): array
+    {
+        return [
+            'productId',
+            'productName',
+            'price',
+            'quantity',
+        ];
     }
 }

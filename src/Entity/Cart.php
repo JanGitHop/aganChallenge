@@ -8,6 +8,7 @@ use App\Repository\CartRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: CartRepository::class)]
@@ -15,15 +16,19 @@ class Cart
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
+    #[Groups(['cart:read', 'cart:list'])]
     private Uuid $id;
 
     #[ORM\Column]
+    #[Groups(['cart:read', 'cart:list'])]
     private \DateTimeImmutable $createdAt;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['cart:read', 'cart:list'])]
     private ?\DateTimeImmutable $updatedAt = null;
 
     #[ORM\OneToMany(targetEntity: CartItem::class, mappedBy: 'cart', cascade: ['persist', 'remove'])]
+    #[Groups(['cart:read'])]
     private Collection $items;
 
     public function __construct()
@@ -76,6 +81,7 @@ class Cart
         return $this;
     }
 
+    #[Groups(['cart:read', 'cart:list'])]
     public function getTotal(): float
     {
         $total = 0;
@@ -84,5 +90,28 @@ class Cart
         }
 
         return $total;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'id' => (string) $this->id,
+            'items' => array_map(
+                fn(CartItem $item) => $item->toArray(),
+                $this->items->toArray()
+            ),
+            'total' => $this->getTotal(),
+            'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM),
+            'updatedAt' => $this->updatedAt?->format(\DateTimeInterface::ATOM),
+        ];
+    }
+
+    public function getItem(string $itemId): ?CartItem
+    {
+        $result = $this->items->filter(
+            fn(CartItem $item) => (string)$item->getId() === $itemId
+        );
+
+        return $result->first() ?: null;
     }
 }
