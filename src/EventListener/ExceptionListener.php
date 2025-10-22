@@ -16,9 +16,12 @@ final class ExceptionListener
     {
         $exception = $event->getThrowable();
 
-        $statusCode = $exception instanceof HttpExceptionInterface
-            ? $exception->getStatusCode()
-            : 500;
+        $statusCode = match (true) {
+            $exception instanceof CartNotFoundException,
+            $exception instanceof CartItemNotFoundException => 404,
+            $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
+            default => 500
+        };
 
         $errorCode = match (true) {
             $exception instanceof CartNotFoundException => 'CART_NOT_FOUND',

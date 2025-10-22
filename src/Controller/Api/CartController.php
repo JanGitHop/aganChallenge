@@ -101,8 +101,8 @@ final class CartController extends AbstractController
             $data['productName'],
             $data['price'],
             $data['quantity'],
-            $data['category'] ?: null,
-            $data['sku'] ?: null
+            $data['category'] ?? null,
+            $data['sku'] ?? null
         );
 
         $cart->addItem($item);
