@@ -1,7 +1,7 @@
 # Shopping Cart REST API
 
 RESTful API for managing shopping carts built with Symfony 7.3 and PHP 8.3.
-Author: Jan Geißler, Berlin, Germany
+#### Author: Jan Geißler, Berlin, Germany
 
 ## Requirements
 
@@ -11,7 +11,7 @@ Author: Jan Geißler, Berlin, Germany
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/JanGitHop/aganChallenge
 cd aganChallenge
 docker compose up -d
 docker compose exec frankenphp composer install
