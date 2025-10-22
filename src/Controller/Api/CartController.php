@@ -10,6 +10,7 @@ use App\Exception\CartItemNotFoundException;
 use App\Exception\CartNotFoundException;
 use App\Repository\CartRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,25 @@ final class CartController extends AbstractController
     }
 
     #[Route('/api/carts', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/carts',
+        summary: 'List all carts',
+        tags: ['Cart']
+    )]
+    #[OA\Parameter(
+        name: 'expand',
+        description: 'Expand items in response',
+        in: 'query',
+        schema: new OA\Schema(type: 'string', enum: ['items'])
+    )]
+    #[OA\Response(
+        response: 200,
+        description: 'List of carts',
+        content: new OA\JsonContent(
+            type: 'array',
+            items: new OA\Items(type: 'object')
+        )
+    )]
     public function index(Request $request): JsonResponse
     {
         $carts = $this->cartRepository->findAll();
@@ -37,6 +57,15 @@ final class CartController extends AbstractController
     }
 
     #[Route('/api/carts', methods: ['POST'])]
+    #[OA\Post(
+        path: '/api/carts',
+        summary: 'Create a new cart',
+        tags: ['Cart']
+    )]
+    #[OA\Response(
+        response: 201,
+        description: 'Cart created'
+    )]
     public function create(): JsonResponse
     {
         $cart = new Cart();
@@ -51,6 +80,22 @@ final class CartController extends AbstractController
      * @throws CartNotFoundException
      */
     #[Route('/api/carts/{id}', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/carts/{id}',
+        summary: 'Get cart by ID',
+        tags: ['Cart']
+    )]
+    #[OA\Parameter(
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: new OA\Schema(type: 'string', format: 'uuid')
+    )]
+    #[OA\Response(
+        response: 200,
+        description: 'Cart details'
+    )]
+    #[OA\Response(response: 404, description: 'Cart not found')]
     public function show(string $id): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
@@ -62,6 +107,28 @@ final class CartController extends AbstractController
      * @throws CartNotFoundException
      */
     #[Route('/api/carts/{id}/items', methods: ['POST'])]
+    #[OA\Post(
+        path: '/api/carts/{id}/items',
+        summary: 'Add item to cart',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['productId', 'productName', 'price', 'quantity'],
+                properties: [
+                    new OA\Property(property: 'productId', type: 'integer'),
+                    new OA\Property(property: 'productName', type: 'string'),
+                    new OA\Property(property: 'price', type: 'number', format: 'float'),
+                    new OA\Property(property: 'quantity', type: 'integer'),
+                    new OA\Property(property: 'category', type: 'string', nullable: true),
+                    new OA\Property(property: 'sku', type: 'string', nullable: true),
+                ]
+            )
+        ),
+        tags: ['Cart Items']
+    )]
+    #[OA\Response(response: 201, description: 'Item added')]
+    #[OA\Response(response: 400, description: 'Validation error')]
+    #[OA\Response(response: 404, description: 'Cart not found')]
     public function addItem(string $id, Request $request): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
