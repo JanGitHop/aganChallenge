@@ -29,7 +29,7 @@ final class CartController extends AbstractController
         $carts = $this->cartRepository->findAll();
 
         $groups = ['cart:list'];
-        if ($request->query->get('expand') === 'items') {
+        if ('items' === $request->query->get('expand')) {
             $groups[] = 'cart:read';
         }
 
@@ -70,8 +70,8 @@ final class CartController extends AbstractController
         $errors = [];
         foreach (CartItem::requiredFields() as $requiredField) {
             if (!isset($data[$requiredField])) {
-                $code = strtoupper($requiredField) . '_REQUIRED';
-                $errors[$code] = ucfirst($requiredField) . ' required';
+                $code = strtoupper($requiredField).'_REQUIRED';
+                $errors[$code] = ucfirst($requiredField).' required';
             }
         }
 
@@ -79,8 +79,8 @@ final class CartController extends AbstractController
             return $this->json([
                 'error' => [
                     'message' => implode(' | ', $errors),
-                    'code' => implode('|', array_keys($errors))
-                ]
+                    'code' => implode('|', array_keys($errors)),
+                ],
             ], 400);
         }
 
@@ -90,8 +90,8 @@ final class CartController extends AbstractController
                 'error' => [
                     'message' => 'Validation failed',
                     'code' => 'VALIDATION_ERROR',
-                    'details' => $validationErrors
-                ]
+                    'details' => $validationErrors,
+                ],
             ], 400);
         }
 
@@ -126,8 +126,8 @@ final class CartController extends AbstractController
             return $this->json([
                 'error' => [
                     'message' => 'Quantity required',
-                    'code' => 'QUANTITY_REQUIRED'
-                ]
+                    'code' => 'QUANTITY_REQUIRED',
+                ],
             ], 400);
         }
 
@@ -136,7 +136,7 @@ final class CartController extends AbstractController
             throw new CartItemNotFoundException();
         }
 
-        $item->setQuantity((int)$data['quantity']);
+        $item->setQuantity((int) $data['quantity']);
 
         $this->entityManager->flush();
 
@@ -178,6 +178,11 @@ final class CartController extends AbstractController
         return $cart;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, array<string, string>>
+     */
     private function validateItemFields(array $data): array
     {
         $errors = [];

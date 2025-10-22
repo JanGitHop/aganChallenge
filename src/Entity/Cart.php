@@ -27,6 +27,9 @@ class Cart
     #[Groups(['cart:read', 'cart:list'])]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    /**
+     * @var Collection<int, CartItem>
+     */
     #[ORM\OneToMany(targetEntity: CartItem::class, mappedBy: 'cart', cascade: ['persist', 'remove'])]
     #[Groups(['cart:read'])]
     private Collection $items;
@@ -60,6 +63,9 @@ class Cart
         return $this;
     }
 
+    /**
+     * @return Collection<int, CartItem>
+     */
     public function getItems(): Collection
     {
         return $this->items;
@@ -92,12 +98,15 @@ class Cart
         return $total;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
             'id' => (string) $this->id,
             'items' => array_map(
-                fn(CartItem $item) => $item->toArray(),
+                fn (CartItem $item) => $item->toArray(),
                 $this->items->toArray()
             ),
             'total' => $this->getTotal(),
@@ -109,7 +118,7 @@ class Cart
     public function getItem(string $itemId): ?CartItem
     {
         $result = $this->items->filter(
-            fn(CartItem $item) => (string)$item->getId() === $itemId
+            fn (CartItem $item) => (string) $item->getId() === $itemId
         );
 
         return $result->first() ?: null;

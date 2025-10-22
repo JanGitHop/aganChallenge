@@ -18,9 +18,6 @@ class CartItem
     #[Groups(['cart:read'])]
     private Uuid $id;
 
-    /**
-     * @var Cart
-     */
     #[ORM\ManyToOne(targetEntity: Cart::class, inversedBy: 'items')]
     #[ORM\JoinColumn(nullable: false)]
     private Cart $cart;
@@ -64,7 +61,7 @@ class CartItem
         float $price,
         int $quantity,
         ?string $category = null,
-        ?string $sku = null
+        ?string $sku = null,
     ) {
         $this->id = Uuid::v4();
         $this->cart = $cart;
@@ -82,9 +79,6 @@ class CartItem
         return $this->id;
     }
 
-    /**
-     * @return Cart
-     */
     public function getCart(): Cart
     {
         return $this->cart;
@@ -151,6 +145,9 @@ class CartItem
         return $this->price * $this->quantity;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
@@ -167,6 +164,9 @@ class CartItem
         ];
     }
 
+    /**
+     * @return array<int, string>
+     */
     public static function requiredFields(): array
     {
         return [

@@ -20,20 +20,20 @@ final class ExceptionListener
             $exception instanceof CartNotFoundException,
             $exception instanceof CartItemNotFoundException => 404,
             $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
-            default => 500
+            default => 500,
         };
 
         $errorCode = match (true) {
             $exception instanceof CartNotFoundException => 'CART_NOT_FOUND',
             $exception instanceof CartItemNotFoundException => 'ITEM_NOT_FOUND',
-            default => 'INTERNAL_SERVER_ERROR'
+            default => 'INTERNAL_SERVER_ERROR',
         };
 
         $response = new JsonResponse([
             'error' => [
                 'message' => $exception->getMessage(),
                 'code' => $errorCode,
-            ]
+            ],
         ], $statusCode);
 
         $event->setResponse($response);

@@ -9,7 +9,7 @@ class CartItemNotFoundException extends \Exception
     public function __construct(
         string $message = 'Item not found',
         int $code = 404,
-        ?\Throwable $previous = null
+        ?\Throwable $previous = null,
     ) {
         parent::__construct($message, $code, $previous);
     }
