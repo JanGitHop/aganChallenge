@@ -6,6 +6,8 @@ namespace App\Controller\Api;
 
 use App\Entity\Cart;
 use App\Entity\CartItem;
+use App\Exception\CartItemNotFoundException;
+use App\Exception\CartNotFoundException;
 use App\Repository\CartRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,8 +20,7 @@ final class CartController extends AbstractController
     public function __construct(
         private EntityManagerInterface $entityManager,
         private CartRepository $cartRepository,
-    )
-    {
+    ) {
     }
 
     #[Route('/api/carts', methods: ['GET'])]
@@ -46,24 +47,24 @@ final class CartController extends AbstractController
         return $this->json($cart, 201, [], ['groups' => ['cart:read']]);
     }
 
+    /**
+     * @throws CartNotFoundException
+     */
     #[Route('/api/carts/{id}', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
-        if ($cart instanceof JsonResponse) {
-            return $cart;
-        }
 
         return $this->json($cart, 200, [], ['groups' => ['cart:read']]);
     }
 
+    /**
+     * @throws CartNotFoundException
+     */
     #[Route('/api/carts/{id}/items', methods: ['POST'])]
     public function addItem(string $id, Request $request): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
-        if ($cart instanceof JsonResponse) {
-            return $cart;
-        }
 
         $data = $request->toArray();
         $errors = [];
@@ -111,13 +112,14 @@ final class CartController extends AbstractController
         return $this->json($cart, 201, [], ['groups' => ['cart:read']]);
     }
 
+    /**
+     * @throws CartItemNotFoundException
+     * @throws CartNotFoundException
+     */
     #[Route('/api/carts/{id}/items/{itemId}', methods: ['PATCH'])]
     public function updateItem(string $id, string $itemId, Request $request): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
-        if ($cart instanceof JsonResponse) {
-            return $cart;
-        }
 
         $data = $request->toArray();
         if (!isset($data['quantity'])) {
@@ -129,40 +131,30 @@ final class CartController extends AbstractController
             ], 400);
         }
 
-        /** @var ?CartItem $item */
-        $item = $cart?->getItem($itemId);
+        $item = $cart->getItem($itemId);
         if (!$item) {
-            return $this->json([
-                'error' => [
-                    'message' => 'Item not found',
-                    'code' => 'ITEM_NOT_FOUND'
-                ]
-            ], 404);
+            throw new CartItemNotFoundException();
         }
 
-        $item->setQuantity((int) $data['quantity']);
+        $item->setQuantity((int)$data['quantity']);
 
         $this->entityManager->flush();
 
         return $this->json($item, 200, [], ['groups' => ['cart:read']]);
     }
 
+    /**
+     * @throws CartItemNotFoundException
+     * @throws CartNotFoundException
+     */
     #[Route('/api/carts/{id}/items/{itemId}', methods: ['DELETE'])]
     public function removeItem(string $id, string $itemId): JsonResponse
     {
         $cart = $this->findCartOrFail($id);
-        if ($cart instanceof JsonResponse) {
-            return $cart;
-        }
 
         $item = $cart->getItem($itemId);
         if (!$item) {
-            return $this->json([
-                'error' => [
-                    'message' => 'Item not found',
-                    'code' => 'ITEM_NOT_FOUND'
-                ]
-            ], 404);
+            throw new CartItemNotFoundException();
         }
 
         $cart->removeItem($item);
@@ -172,17 +164,15 @@ final class CartController extends AbstractController
         return $this->json(null, 204);
     }
 
-    private function findCartOrFail(string $id): Cart|JsonResponse
+    /**
+     * @throws CartNotFoundException
+     */
+    private function findCartOrFail(string $id): Cart
     {
         $cart = $this->cartRepository->find($id);
 
         if (!$cart) {
-            return $this->json([
-                'error' => [
-                    'message' => 'Cart not found',
-                    'code' => 'CART_NOT_FOUND'
-                ]
-            ], 404);
+            throw new CartNotFoundException();
         }
 
         return $cart;
