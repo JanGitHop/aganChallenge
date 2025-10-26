@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Dto\AddCartItemDto;
 use App\Entity\Cart;
 use App\Entity\CartItem;
 use App\Exception\CartItemNotFoundException;
@@ -14,13 +15,16 @@ use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class CartController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
         private CartRepository $cartRepository,
+        private ValidatorInterface $validator,
     ) {
     }
 
@@ -129,47 +133,21 @@ final class CartController extends AbstractController
     #[OA\Response(response: 201, description: 'Item added')]
     #[OA\Response(response: 400, description: 'Validation error')]
     #[OA\Response(response: 404, description: 'Cart not found')]
-    public function addItem(string $id, Request $request): JsonResponse
-    {
+    public function addItem(
+        string $id,
+        #[MapRequestPayload] AddCartItemDto $dto
+    ): JsonResponse {
         $cart = $this->findCartOrFail($id);
 
-        $data = $request->toArray();
-        $errors = [];
-        foreach (CartItem::requiredFields() as $requiredField) {
-            if (!isset($data[$requiredField])) {
-                $code = strtoupper($requiredField).'_REQUIRED';
-                $errors[$code] = ucfirst($requiredField).' required';
-            }
-        }
-
-        if ($errors) {
-            return $this->json([
-                'error' => [
-                    'message' => implode(' | ', $errors),
-                    'code' => implode('|', array_keys($errors)),
-                ],
-            ], 400);
-        }
-
-        $validationErrors = $this->validateItemFields($data);
-        if ($validationErrors) {
-            return $this->json([
-                'error' => [
-                    'message' => 'Validation failed',
-                    'code' => 'VALIDATION_ERROR',
-                    'details' => $validationErrors,
-                ],
-            ], 400);
-        }
-
+        // Note: Validation ensures these are not null, but keep null safety for IDE
         $item = new CartItem(
             $cart,
-            $data['productId'],
-            $data['productName'],
-            $data['price'],
-            $data['quantity'],
-            $data['category'] ?? null,
-            $data['sku'] ?? null
+            $dto->productId ?? 0,
+            $dto->productName ?? '',
+            $dto->price ?? 0.0,
+            $dto->quantity ?? 0,
+            $dto->category,
+            $dto->sku
         );
 
         $cart->addItem($item);
@@ -189,6 +167,12 @@ final class CartController extends AbstractController
         $cart = $this->findCartOrFail($id);
 
         $data = $request->toArray();
+
+        // Create a simple object for validation
+        $updateData = new class {
+            public int $quantity;
+        };
+
         if (!isset($data['quantity'])) {
             return $this->json([
                 'error' => [
@@ -198,12 +182,35 @@ final class CartController extends AbstractController
             ], 400);
         }
 
+        $updateData->quantity = (int) $data['quantity'];
+
+        // Validate the quantity
+        $errors = $this->validator->validate($updateData->quantity, [
+            new \Symfony\Component\Validator\Constraints\NotBlank(),
+            new \Symfony\Component\Validator\Constraints\Positive(message: 'Quantity must be greater than 0'),
+        ]);
+
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+
+            return $this->json([
+                'error' => [
+                    'message' => 'Validation failed',
+                    'code' => 'VALIDATION_ERROR',
+                    'details' => $errorMessages,
+                ],
+            ], 400);
+        }
+
         $item = $cart->getItem($itemId);
         if (!$item) {
             throw new CartItemNotFoundException();
         }
 
-        $item->setQuantity((int) $data['quantity']);
+        $item->setQuantity($updateData->quantity);
 
         $this->entityManager->flush();
 
@@ -243,46 +250,5 @@ final class CartController extends AbstractController
         }
 
         return $cart;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     *
-     * @return array<string, array<string, string>>
-     */
-    private function validateItemFields(array $data): array
-    {
-        $errors = [];
-
-        foreach ($data as $cartItemField => $value) {
-            switch ($cartItemField) {
-                case 'productId':
-                    if (!is_int($value)) {
-                        $errors[$cartItemField]['message'] = 'Product ID must be an integer';
-                        $errors[$cartItemField]['code'] = 'INVALID_TYPE';
-                    }
-                    break;
-                case 'price':
-                    if (!is_numeric($value)) {
-                        $errors[$cartItemField]['message'] = 'Price must be a number';
-                        $errors[$cartItemField]['code'] = 'INVALID_TYPE';
-                    } elseif ($value < 0) {
-                        $errors[$cartItemField]['message'] = 'Price cannot be negative';
-                        $errors[$cartItemField]['code'] = 'INVALID_VALUE';
-                    }
-                    break;
-                case 'quantity':
-                    if (!is_int($value)) {
-                        $errors[$cartItemField]['message'] = 'Quantity must be an integer';
-                        $errors[$cartItemField]['code'] = 'INVALID_TYPE';
-                    } elseif ($value <= 0) {
-                        $errors[$cartItemField]['message'] = 'Quantity must be greater than 0';
-                        $errors[$cartItemField]['code'] = 'INVALID_VALUE';
-                    }
-                    break;
-            }
-        }
-
-        return $errors;
     }
 }

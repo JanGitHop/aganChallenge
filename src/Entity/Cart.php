@@ -98,23 +98,6 @@ class Cart
         return $total;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(): array
-    {
-        return [
-            'id' => (string) $this->id,
-            'items' => array_map(
-                fn (CartItem $item) => $item->toArray(),
-                $this->items->toArray()
-            ),
-            'total' => $this->getTotal(),
-            'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM),
-            'updatedAt' => $this->updatedAt?->format(\DateTimeInterface::ATOM),
-        ];
-    }
-
     public function getItem(string $itemId): ?CartItem
     {
         $result = $this->items->filter(

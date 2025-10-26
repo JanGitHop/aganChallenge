@@ -9,6 +9,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: CartItemRepository::class)]
 class CartItem
@@ -24,26 +25,36 @@ class CartItem
 
     #[ORM\Column]
     #[Groups(['cart:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Positive]
     private int $productId;
 
     #[ORM\Column(length: 255)]
     #[Groups(['cart:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(min: 1, max: 255)]
     private string $productName;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['cart:read'])]
+    #[Assert\Length(max: 255)]
     private ?string $category = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['cart:read'])]
+    #[Assert\Length(max: 255)]
     private ?string $sku = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
     #[Groups(['cart:read'])]
+    #[Assert\NotBlank]
+    #[Assert\PositiveOrZero]
     private float $price;
 
     #[ORM\Column]
     #[Groups(['cart:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Positive]
     private int $quantity;
 
     #[ORM\Column]
@@ -143,37 +154,5 @@ class CartItem
     public function getSubtotal(): float
     {
         return $this->price * $this->quantity;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(): array
-    {
-        return [
-            'id' => (string) $this->id,
-            'productId' => $this->productId,
-            'productName' => $this->productName,
-            'category' => $this->category,
-            'sku' => $this->sku,
-            'price' => $this->price,
-            'quantity' => $this->quantity,
-            'subtotal' => $this->getSubtotal(),
-            'addedAt' => $this->addedAt->format(\DateTimeInterface::ATOM),
-            'updatedAt' => $this->updatedAt?->format(\DateTimeInterface::ATOM),
-        ];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public static function requiredFields(): array
-    {
-        return [
-            'productId',
-            'productName',
-            'price',
-            'quantity',
-        ];
     }
 }

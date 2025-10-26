@@ -7,15 +7,52 @@ namespace App\Tests\Unit\Entity;
 use App\Entity\Cart;
 use App\Entity\CartItem;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\PropertyInfo\Extractor\PhpDocExtractor;
+use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
+use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
+use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Normalizer\UidNormalizer;
+use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class CartItemTest extends TestCase
 {
     private Cart $cart;
+    private SerializerInterface $serializer;
 
     protected function setUp(): void
     {
         $this->cart = new Cart();
+
+        // Setup Symfony Serializer with necessary normalizers
+        $phpDocExtractor = new PhpDocExtractor();
+        $reflectionExtractor = new ReflectionExtractor();
+        $propertyTypeExtractor = new PropertyInfoExtractor(
+            [$reflectionExtractor],
+            [$phpDocExtractor, $reflectionExtractor]
+        );
+
+        $normalizers = [
+            new DateTimeNormalizer(),
+            new UidNormalizer(),
+            new ArrayDenormalizer(),
+            new ObjectNormalizer(
+                propertyTypeExtractor: $propertyTypeExtractor,
+                defaultContext: [
+                    AbstractNormalizer::CIRCULAR_REFERENCE_HANDLER => fn($object) => $object->getId(),
+                ]
+            ),
+        ];
+
+        $encoders = [new JsonEncoder()];
+        $this->serializer = new Serializer($normalizers, $encoders);
     }
 
     public function testConstructorCreatesCartItemWithRequiredFields(): void
@@ -101,7 +138,7 @@ final class CartItemTest extends TestCase
         $this->assertSame($updatedAt, $item->getUpdatedAt());
     }
 
-    public function testToArrayReturnsCorrectStructure(): void
+    public function testSerializationWithCartReadGroupReturnsCorrectStructure(): void
     {
         $item = new CartItem(
             $this->cart,
@@ -113,39 +150,51 @@ final class CartItemTest extends TestCase
             'LAP-001'
         );
 
-        $array = $item->toArray();
+        $normalized = $this->serializer->normalize($item, null, ['groups' => ['cart:read']]);
+
+        $this->assertIsArray($normalized);
+        $this->assertArrayHasKey('id', $normalized);
+        $this->assertArrayHasKey('productId', $normalized);
+        $this->assertArrayHasKey('productName', $normalized);
+        $this->assertArrayHasKey('category', $normalized);
+        $this->assertArrayHasKey('sku', $normalized);
+        $this->assertArrayHasKey('price', $normalized);
+        $this->assertArrayHasKey('quantity', $normalized);
+        $this->assertArrayHasKey('subtotal', $normalized);
+        $this->assertArrayHasKey('addedAt', $normalized);
+        $this->assertArrayHasKey('updatedAt', $normalized);
+
+        $this->assertIsString($normalized['id']);
+        $this->assertSame(123, $normalized['productId']);
+        $this->assertSame('Laptop', $normalized['productName']);
+        $this->assertSame('Electronics', $normalized['category']);
+        $this->assertSame('LAP-001', $normalized['sku']);
+        $this->assertSame(999.99, $normalized['price']);
+        $this->assertSame(2, $normalized['quantity']);
+        $this->assertSame(1999.98, $normalized['subtotal']);
+    }
+
+    public function testSerializationToJsonWithCartReadGroup(): void
+    {
+        $item = new CartItem(
+            $this->cart,
+            123,
+            'Laptop',
+            999.99,
+            2,
+            'Electronics',
+            'LAP-001'
+        );
+
+        $json = $this->serializer->serialize($item, 'json', ['groups' => ['cart:read']]);
+        $array = json_decode($json, true);
 
         $this->assertIsArray($array);
         $this->assertArrayHasKey('id', $array);
         $this->assertArrayHasKey('productId', $array);
-        $this->assertArrayHasKey('productName', $array);
-        $this->assertArrayHasKey('category', $array);
-        $this->assertArrayHasKey('sku', $array);
-        $this->assertArrayHasKey('price', $array);
-        $this->assertArrayHasKey('quantity', $array);
         $this->assertArrayHasKey('subtotal', $array);
-        $this->assertArrayHasKey('addedAt', $array);
-        $this->assertArrayHasKey('updatedAt', $array);
-
-        $this->assertIsString($array['id']);
         $this->assertSame(123, $array['productId']);
         $this->assertSame('Laptop', $array['productName']);
-        $this->assertSame('Electronics', $array['category']);
-        $this->assertSame('LAP-001', $array['sku']);
-        $this->assertSame(999.99, $array['price']);
-        $this->assertSame(2, $array['quantity']);
         $this->assertSame(1999.98, $array['subtotal']);
-    }
-
-    public function testRequiredFieldsReturnsCorrectArray(): void
-    {
-        $requiredFields = CartItem::requiredFields();
-
-        $this->assertIsArray($requiredFields);
-        $this->assertContains('productId', $requiredFields);
-        $this->assertContains('productName', $requiredFields);
-        $this->assertContains('price', $requiredFields);
-        $this->assertContains('quantity', $requiredFields);
-        $this->assertCount(4, $requiredFields);
     }
 }

@@ -46,10 +46,13 @@ final class CartControllerTest extends WebTestCase
 
         $data = json_decode($client->getResponse()->getContent(), true);
 
+        // GET single cart should always use cart:read group and include items
         $this->assertArrayHasKey('id', $data);
-        $this->assertArrayHasKey('items', $data);
+        $this->assertArrayHasKey('items', $data, 'GET /api/carts/{id} should always include items');
         $this->assertArrayHasKey('total', $data);
+        $this->assertArrayHasKey('createdAt', $data);
         $this->assertSame($cartId, $data['id']);
+        $this->assertIsArray($data['items']);
     }
 
     public function testGetCartNotFound(): void
@@ -81,12 +84,72 @@ final class CartControllerTest extends WebTestCase
         $this->assertIsArray($data);
     }
 
-    public function testListCartsWithExpandParameter(): void
+    public function testListCartsWithoutExpandParameterExcludesItems(): void
     {
         $client = static::createClient();
+
+        // Create a cart with an item
         $client->request('POST', '/api/carts');
         $cartId = json_decode($client->getResponse()->getContent(), true)['id'];
 
+        $client->request('POST', '/api/carts/' . $cartId . '/items', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'productId' => 123,
+            'productName' => 'Laptop',
+            'price' => 999.99,
+            'quantity' => 2,
+        ]));
+
+        // List carts without expand parameter - should use cart:list group
+        $client->request('GET', '/api/carts');
+
+        $this->assertResponseStatusCodeSame(200);
+
+        $data = json_decode($client->getResponse()->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertGreaterThan(0, count($data));
+
+        // Find our cart in the list
+        $ourCart = null;
+        foreach ($data as $cart) {
+            if ($cart['id'] === $cartId) {
+                $ourCart = $cart;
+                break;
+            }
+        }
+
+        $this->assertNotNull($ourCart, 'Created cart should be in the list');
+
+        // Verify cart:list group structure - should NOT include items
+        $this->assertArrayHasKey('id', $ourCart);
+        $this->assertArrayHasKey('total', $ourCart);
+        $this->assertArrayHasKey('createdAt', $ourCart);
+        $this->assertArrayNotHasKey('items', $ourCart, 'cart:list group should NOT include items');
+
+        // But total should still be calculated
+        $this->assertSame(1999.98, $ourCart['total']);
+    }
+
+    public function testListCartsWithExpandParameterIncludesItems(): void
+    {
+        $client = static::createClient();
+
+        // Create a cart with an item
+        $client->request('POST', '/api/carts');
+        $cartId = json_decode($client->getResponse()->getContent(), true)['id'];
+
+        $client->request('POST', '/api/carts/' . $cartId . '/items', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'productId' => 456,
+            'productName' => 'Mouse',
+            'price' => 29.99,
+            'quantity' => 1,
+        ]));
+
+        // List carts WITH expand parameter - should use cart:read group
         $client->request('GET', '/api/carts?expand=items');
 
         $this->assertResponseStatusCodeSame(200);
@@ -94,9 +157,36 @@ final class CartControllerTest extends WebTestCase
         $data = json_decode($client->getResponse()->getContent(), true);
 
         $this->assertIsArray($data);
-        if (count($data) > 0) {
-            $this->assertArrayHasKey('items', $data[0]);
+        $this->assertGreaterThan(0, count($data));
+
+        // Find our cart in the list
+        $ourCart = null;
+        foreach ($data as $cart) {
+            if ($cart['id'] === $cartId) {
+                $ourCart = $cart;
+                break;
+            }
         }
+
+        $this->assertNotNull($ourCart, 'Created cart should be in the list');
+
+        // Verify cart:read group structure - should include items
+        $this->assertArrayHasKey('id', $ourCart);
+        $this->assertArrayHasKey('items', $ourCart, 'cart:read group should include items');
+        $this->assertArrayHasKey('total', $ourCart);
+        $this->assertArrayHasKey('createdAt', $ourCart);
+
+        // Verify items array is not empty and has correct structure
+        $this->assertIsArray($ourCart['items']);
+        $this->assertCount(1, $ourCart['items']);
+
+        $item = $ourCart['items'][0];
+        $this->assertArrayHasKey('id', $item);
+        $this->assertArrayHasKey('productId', $item);
+        $this->assertArrayHasKey('productName', $item);
+        $this->assertSame(456, $item['productId']);
+        $this->assertSame('Mouse', $item['productName']);
+        $this->assertSame(29.99, $item['price']);
     }
 
     public function testAddItemToCart(): void
