@@ -3,6 +3,19 @@
 RESTful API for managing shopping carts built with Symfony 7.3 and PHP 8.3.
 #### Author: Jan Geißler, Berlin, Germany
 
+### The Challenge
+
+Wir würden gerne sehen, inwiefern du eine einfache REST-API eines Warenkorbes in PHP mit aktuellem Symfony ohne API-Platform umsetzt.
+Die API sollte RESTful sein und folgende Funktionen bieten:
+
+Einen Artikel in den Warenkorb legen
+Einen Artikel aus dem Warenkorb löschen
+Einen Artikel im Warenkorb editieren
+Den Warenkorb anzeigen lassen
+
+Für die Coding Challenge hast du zwei Wochen Zeit und wir sind gespannt auf das Ergebnis.
+Es geht wie gesagt in erster Linie um die Qualität- und Code-Liebe, und nicht darum, der/die Schnellste zu sein. :)
+
 ## Requirements
 
 - Docker & Docker Compose
