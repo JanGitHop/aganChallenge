@@ -6,6 +6,7 @@ services:
       target: frankenphp_dev
     depends_on:
       - database
+      - redis
     restart: unless-stopped
     ports:
       - "80:80"
@@ -20,6 +21,7 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       APP_SECRET: ${APP_SECRET:-!ChangeMe!}
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-AsGoodAsNew}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
+      REDIS_URL: redis://redis:6379
 
 ###> doctrine/doctrine-bundle ###
   database:
@@ -40,9 +42,25 @@ services:
       # - ./docker/db/data:/var/lib/postgresql/data:rw
 ###< doctrine/doctrine-bundle ###
 
+###> symfony/cache ###
+  redis:
+    image: redis:${REDIS_VERSION:-7}-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - redis_data:/data
+###< symfony/cache ###
+
 volumes:
   caddy_data:
   caddy_config:
 ###> doctrine/doctrine-bundle ###
   database_data:
 ###< doctrine/doctrine-bundle ###
+###> symfony/cache ###
+  redis_data:
+###< symfony/cache ###

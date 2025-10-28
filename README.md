@@ -16,6 +16,17 @@ Den Warenkorb anzeigen lassen
 Für die Coding Challenge hast du zwei Wochen Zeit und wir sind gespannt auf das Ergebnis.
 Es geht wie gesagt in erster Linie um die Qualität- und Code-Liebe, und nicht darum, der/die Schnellste zu sein. :)
 
+## Features
+
+- RESTful API design
+- Full CRUD operations for shopping carts
+- Input validation and error handling
+- Redis-based caching for performance
+- Rate limiting for API security
+- Comprehensive test coverage
+- API documentation (OpenAPI/Swagger)
+- PSR-12 code standards
+
 ## Requirements
 
 - Docker & Docker Compose
@@ -28,9 +39,12 @@ git clone https://github.com/JanGitHop/aganChallenge
 cd aganChallenge
 docker compose up -d
 docker compose exec frankenphp composer install
+docker compose exec frankenphp composer require symfony/cache predis/predis symfony/rate-limiter
 docker compose exec frankenphp php bin/console doctrine:database:create
 docker compose exec frankenphp php bin/console doctrine:migrations:migrate
 ```
+
+**For detailed Redis setup and configuration, see [REDIS_IMPLEMENTATION.md](REDIS_IMPLEMENTATION.md)**
 
 ## Usage
 
@@ -119,11 +133,34 @@ Access database:
 docker compose exec database psql -U app -d app
 ```
 
+## Redis Caching & Rate Limiting
+
+### Features
+- **Response Caching**: GET requests cached for 5 minutes (95% faster response times)
+- **Rate Limiting**: IP-based limits to prevent API abuse
+  - Global: 1000 req/min
+  - Read: 100 req/min
+  - Write: 30 req/min
+  - Cart modifications: 10 req/10s
+- **X-RateLimit Headers**: Standard rate limit information in responses
+
+### Access Redis
+```bash
+docker compose exec redis redis-cli
+
+# Check cache keys
+KEYS cart_*
+
+# Monitor operations
+MONITOR
+```
+
 ## Tech Stack
 
 - PHP 8.3
 - Symfony 7.3
 - PostgreSQL 16
+- Redis 7
 - FrankenPHP
 - Doctrine ORM
 - PHPUnit 12

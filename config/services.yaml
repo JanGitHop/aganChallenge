@@ -22,3 +22,11 @@ services:
     App\EventListener\ExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception }
+
+    # Bind rate limiters to RateLimitSubscriber
+    App\EventSubscriber\RateLimitSubscriber:
+        arguments:
+            $apiGlobalLimiter: '@limiter.api_global'
+            $apiReadLimiter: '@limiter.api_read'
+            $apiWriteLimiter: '@limiter.api_write'
+            $apiCartModifyLimiter: '@limiter.api_cart_modify'

@@ -10,6 +10,7 @@ use App\Entity\CartItem;
 use App\Exception\CartItemNotFoundException;
 use App\Exception\CartNotFoundException;
 use App\Repository\CartRepository;
+use App\Service\CartCacheService;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,6 +26,7 @@ final class CartController extends AbstractController
         private EntityManagerInterface $entityManager,
         private CartRepository $cartRepository,
         private ValidatorInterface $validator,
+        private CartCacheService $cacheService,
     ) {
     }
 
@@ -50,14 +52,20 @@ final class CartController extends AbstractController
     )]
     public function index(Request $request): JsonResponse
     {
-        $carts = $this->cartRepository->findAll();
+        $expand = $request->query->get('expand');
 
-        $groups = ['cart:list'];
-        if ('items' === $request->query->get('expand')) {
-            $groups[] = 'cart:read';
-        }
+        $cachedResponse = $this->cacheService->getCartList(1, 9999, function () use ($expand) {
+            $carts = $this->cartRepository->findAll();
 
-        return $this->json($carts, 200, [], ['groups' => $groups]);
+            $groups = ['cart:list'];
+            if ('items' === $expand) {
+                $groups[] = 'cart:read';
+            }
+
+            return $this->json($carts, 200, [], ['groups' => $groups]);
+        });
+
+        return $cachedResponse;
     }
 
     #[Route('/api/carts', methods: ['POST'])]
@@ -76,6 +84,9 @@ final class CartController extends AbstractController
 
         $this->entityManager->persist($cart);
         $this->entityManager->flush();
+
+        // Invalidate cart list cache
+        $this->cacheService->invalidateAllLists();
 
         return $this->json($cart, 201, [], ['groups' => ['cart:read']]);
     }
@@ -102,9 +113,12 @@ final class CartController extends AbstractController
     #[OA\Response(response: 404, description: 'Cart not found')]
     public function show(string $id): JsonResponse
     {
-        $cart = $this->findCartOrFail($id);
+        $cachedResponse = $this->cacheService->getCart($id, function () use ($id) {
+            $cart = $this->findCartOrFail($id);
+            return $this->json($cart, 200, [], ['groups' => ['cart:read']]);
+        });
 
-        return $this->json($cart, 200, [], ['groups' => ['cart:read']]);
+        return $cachedResponse;
     }
 
     /**
@@ -153,6 +167,9 @@ final class CartController extends AbstractController
         $cart->addItem($item);
 
         $this->entityManager->flush();
+
+        // Invalidate cache for this cart
+        $this->cacheService->invalidateCart($id);
 
         return $this->json($cart, 201, [], ['groups' => ['cart:read']]);
     }
@@ -214,6 +231,9 @@ final class CartController extends AbstractController
 
         $this->entityManager->flush();
 
+        // Invalidate cache for this cart
+        $this->cacheService->invalidateCart($id);
+
         return $this->json($item, 200, [], ['groups' => ['cart:read']]);
     }
 
@@ -234,6 +254,9 @@ final class CartController extends AbstractController
         $cart->removeItem($item);
 
         $this->entityManager->flush();
+
+        // Invalidate cache for this cart
+        $this->cacheService->invalidateCart($id);
 
         return $this->json(null, 204);
     }
