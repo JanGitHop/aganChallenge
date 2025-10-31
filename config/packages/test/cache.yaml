@@ -1,0 +1,13 @@
+framework:
+    cache:
+        # Use array adapter for tests (in-memory, no Redis needed)
+        app: cache.adapter.array
+
+        pools:
+            # Cart response caching pool
+            cache.cart_responses:
+                adapter: cache.adapter.array
+
+            # Rate limiter storage pool
+            cache.rate_limiter:
+                adapter: cache.adapter.array

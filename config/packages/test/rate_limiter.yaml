@@ -1,0 +1,25 @@
+framework:
+    rate_limiter:
+        # API Global rate limiter - very high limit for tests
+        api_global:
+            policy: 'sliding_window'
+            limit: 100000
+            interval: '1 minute'
+
+        # API Read operations - very high limit for tests
+        api_read:
+            policy: 'sliding_window'
+            limit: 100000
+            interval: '1 minute'
+
+        # API Write operations - very high limit for tests
+        api_write:
+            policy: 'sliding_window'
+            limit: 100000
+            interval: '1 minute'
+
+        # Cart modifications - very high limit for tests
+        api_cart_modify:
+            policy: 'sliding_window'
+            limit: 100000
+            interval: '1 minute'

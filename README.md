@@ -8,10 +8,10 @@ RESTful API for managing shopping carts built with Symfony 7.3 and PHP 8.3.
 Wir würden gerne sehen, inwiefern du eine einfache REST-API eines Warenkorbes in PHP mit aktuellem Symfony ohne API-Platform umsetzt.
 Die API sollte RESTful sein und folgende Funktionen bieten:
 
-Einen Artikel in den Warenkorb legen
-Einen Artikel aus dem Warenkorb löschen
-Einen Artikel im Warenkorb editieren
-Den Warenkorb anzeigen lassen
+- Einen Artikel in den Warenkorb legen
+- Einen Artikel aus dem Warenkorb löschen
+- Einen Artikel im Warenkorb editieren
+- Den Warenkorb anzeigen lassen
 
 Für die Coding Challenge hast du zwei Wochen Zeit und wir sind gespannt auf das Ergebnis.
 Es geht wie gesagt in erster Linie um die Qualität- und Code-Liebe, und nicht darum, der/die Schnellste zu sein. :)
@@ -34,17 +34,59 @@ Es geht wie gesagt in erster Linie um die Qualität- und Code-Liebe, und nicht d
 
 ## Installation
 
+### Quick Start
+
 ```bash
 git clone https://github.com/JanGitHop/aganChallenge
 cd aganChallenge
-docker compose up -d
-docker compose exec frankenphp composer install
-docker compose exec frankenphp composer require symfony/cache predis/predis symfony/rate-limiter
-docker compose exec frankenphp php bin/console doctrine:database:create
-docker compose exec frankenphp php bin/console doctrine:migrations:migrate
+./bin/setup
 ```
 
-**For detailed Redis setup and configuration, see [REDIS_IMPLEMENTATION.md](REDIS_IMPLEMENTATION.md)**
+The setup script will:
+- Check Docker installation
+- Build and start all containers
+- Display next steps
+
+### Complete Setup
+
+After running `./bin/setup`, complete the installation:
+
+```bash
+# Install PHP dependencies
+./bin/sail composer install
+
+# Create database and run migrations
+./bin/sail console doctrine:database:create
+./bin/sail console doctrine:migrations:migrate
+```
+
+### Optional: Trust HTTPS Certificate
+
+To access `https://localhost` without browser warnings:
+
+```bash
+./bin/sail trust-cert
+```
+
+### Optional: Shell Alias
+
+For convenience, you can create a shell alias to use `sail` instead of `./bin/sail`:
+
+**Bash:**
+```bash
+echo "alias sail='./bin/sail'" >> ~/.bashrc && source ~/.bashrc
+```
+
+**Zsh:**
+```bash
+echo "alias sail='./bin/sail'" >> ~/.zshrc && source ~/.zshrc
+```
+
+After setting up the alias, you can use `sail` commands directly (e.g., `sail up`, `sail composer install`).
+
+**For detailed setup and configuration, see [SETUP.md](SETUP.md)**
+
+**For Redis implementation details, see [REDIS_IMPLEMENTATION.md](REDIS_IMPLEMENTATION.md)**
 
 ## Usage
 
@@ -96,26 +138,26 @@ curl -X PATCH http://localhost/api/carts/{cartId}/items/{itemId} \
 
 ```bash
 # Run all tests
-docker compose exec frankenphp composer test
+./bin/sail composer test
 
 # Run unit tests only
-docker compose exec frankenphp composer test:unit
+./bin/sail composer test:unit
 
 # Run integration tests only
-docker compose exec frankenphp composer test:integration
+./bin/sail composer test:integration
 ```
 
 ## Code Quality
 
 ```bash
 # Static analysis
-docker compose exec frankenphp composer phpstan
+./bin/sail composer phpstan
 
 # Check code style
-docker compose exec frankenphp composer cs-check
+./bin/sail composer cs-check
 
 # Fix code style
-docker compose exec frankenphp composer cs-fix
+./bin/sail composer cs-fix
 ```
 
 ## Development
@@ -130,7 +172,7 @@ The application uses FrankenPHP with hot-reload enabled. Changes to PHP files ar
 
 Access database:
 ```bash
-docker compose exec database psql -U app -d app
+./bin/sail db
 ```
 
 ## Redis Caching & Rate Limiting
@@ -146,7 +188,7 @@ docker compose exec database psql -U app -d app
 
 ### Access Redis
 ```bash
-docker compose exec redis redis-cli
+./bin/sail exec redis redis-cli
 
 # Check cache keys
 KEYS cart_*

@@ -1,0 +1,25 @@
+framework:
+    rate_limiter:
+        # API Global rate limiter - prevents general API abuse
+        api_global:
+            policy: 'sliding_window'
+            limit: 1000
+            interval: '1 minute'
+
+        # API Read operations - higher limit for GET requests
+        api_read:
+            policy: 'sliding_window'
+            limit: 100
+            interval: '1 minute'
+
+        # API Write operations - stricter limit for POST/PATCH/DELETE
+        api_write:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '1 minute'
+
+        # Cart modifications - prevent rapid cart item spam
+        api_cart_modify:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '10 seconds'

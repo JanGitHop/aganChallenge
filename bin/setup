@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  AsGoodasNew Challenge - Setup Script${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Error: Docker is not installed.${NC}"
+    echo "Please install Docker Desktop from https://www.docker.com/products/docker-desktop"
+    exit 1
+fi
+
+# Check if Docker Compose is available
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Error: Docker Compose is not available.${NC}"
+    echo "Please ensure you have Docker Desktop with Compose V2 installed."
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Docker and Docker Compose are installed${NC}"
+echo ""
+
+# Check /etc/hosts for asgoodasnew.test
+echo -e "${YELLOW}Checking /etc/hosts configuration...${NC}"
+if grep -q "asgoodasnew.test" /etc/hosts 2>/dev/null; then
+    echo -e "${GREEN}✓ asgoodasnew.test is already in /etc/hosts${NC}"
+else
+    echo -e "${YELLOW}! asgoodasnew.test is not in /etc/hosts${NC}"
+    echo ""
+    echo "To access the application via https://asgoodasnew.test, add this line to /etc/hosts:"
+    echo ""
+    echo -e "${BLUE}127.0.0.1 asgoodasnew.test${NC}"
+    echo ""
+    echo "Run this command:"
+    echo -e "${GREEN}sudo sh -c 'echo \"127.0.0.1 asgoodasnew.test\" >> /etc/hosts'${NC}"
+    echo ""
+    read -p "Press Enter after you've added the entry (or to skip)..."
+fi
+echo ""
+
+# Build and start containers
+echo -e "${YELLOW}Building Docker containers...${NC}"
+docker compose build --no-cache
+
+echo ""
+echo -e "${YELLOW}Starting services...${NC}"
+docker compose up -d
+
+echo ""
+echo -e "${GREEN}✓ Services are starting up...${NC}"
+echo ""
+
+# Wait a moment for services to initialize
+echo -e "${YELLOW}Waiting for services to initialize (10 seconds)...${NC}"
+sleep 10
+
+# Check service status
+echo ""
+echo -e "${YELLOW}Service Status:${NC}"
+docker compose ps
+
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${GREEN}Setup Complete!${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo -e "${YELLOW}Next Steps:${NC}"
+echo ""
+echo "1. Trust the local CA certificate for HTTPS:"
+echo "   Run: ./bin/sail caddy trust"
+echo "   This will allow your browser to accept the self-signed certificate."
+echo ""
+echo "2. Access the application:"
+echo "   - Application (HTTPS): https://asgoodasnew.test"
+echo "   - API (HTTP):          http://localhost/api"
+# echo "   - Vite HMR:            http://localhost:5173"
+echo ""
+echo "3. Access supporting services:"
+echo "   - Mailpit:          http://localhost:8025"
+# echo "   - RabbitMQ:         http://localhost:15672 (guest/guest)"
+echo "   - Database:         localhost:5432 (app/AsGoodAsNew)"
+echo ""
+echo "4. Useful commands:"
+echo "   - ./bin/sail up        Start services"
+echo "   - ./bin/sail down      Stop services"
+echo "   - ./bin/sail logs      View logs"
+echo "   - ./bin/sail shell     Enter app container"
+echo "   - ./bin/sail composer  Run Composer commands"
+echo "   - ./bin/sail php       Run PHP commands"
+echo ""
+echo -e "${YELLOW}Note:${NC} The first time you access https://asgoodasnew.test, your browser"
+echo "may show a certificate warning. After trusting the CA, this will be resolved."
+echo ""
+echo -e "${GREEN}Happy coding! 🚀${NC}"
